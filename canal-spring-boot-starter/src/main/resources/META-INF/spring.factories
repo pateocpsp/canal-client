@@ -1,0 +1,7 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.pateo.qingcloud.canal.autoconfigure.ZookeeperClientAutoConfiguration,\
+com.pateo.qingcloud.canal.autoconfigure.SimpleClientAutoConfiguration,\
+com.pateo.qingcloud.canal.autoconfigure.KafkaClientAutoConfiguration,\
+com.pateo.qingcloud.canal.autoconfigure.ClusterClientAutoConfiguration,\
+com.pateo.qingcloud.canal.autoconfigure.ElasticsearchAutoConfiguration,\
+com.pateo.qingcloud.canal.autoconfigure.CanalClientPlusAutoConfiguration

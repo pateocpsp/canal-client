@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: canal-retail-server
+  main:
+    allow-bean-definition-overriding: true
+#这里可以直接使用配置文件配置，我这里用的是nacos配置中心读取的文件
+nacos:
+  config:
+    type: yaml
+    context-path: nacos
+    group: DEFAULT_GROUP
+    server-addr: ${NACOS_SERVER}
+    username: ${NACOS_USERNAME}
+    password: ${NACOS_PASSWORD}
+    namespace: ${NACOS_NAMESPACE}
+    data-id: canal-retail-server.yaml
+    bootstrap:
+      enable: true
+      log-enable: true
+
+server:
+  port: 8080
+
+NACOS_SERVER: nacos-c8.sit.ptcloud.t.home:80
+NACOS_USERNAME: nacos
+NACOS_PASSWORD: nacos-c8#pateo2020
+NACOS_NAMESPACE: sit

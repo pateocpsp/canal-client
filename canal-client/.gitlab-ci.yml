@@ -1,0 +1,11 @@
+variables:
+  MAVEN_BUILD_DEBUG_TIME: 1
+  COMPILE_DEBUG_TIME: 1
+  BUILD_DEBUG_TIME: 1
+  DEPLOY_DEBUG_TIME: 1
+  BUILD_TYPE: MAVEN
+
+include:
+  - project: 'PaaS/gitlab-ci-template'
+    ref: 'master'
+    file: 'src/.gitlab-ci-template.yml'
