@@ -3,7 +3,6 @@ spring:
     name: canal-retail-server
   main:
     allow-bean-definition-overriding: true
-#这里可以直接使用配置文件配置，我这里用的是nacos配置中心读取的文件
 nacos:
   config:
     type: yaml
@@ -13,7 +12,7 @@ nacos:
     username: ${NACOS_USERNAME}
     password: ${NACOS_PASSWORD}
     namespace: ${NACOS_NAMESPACE}
-    data-id: canal-retail-server.yaml
+    data-id: canal-retail-server-test.yaml
     bootstrap:
       enable: true
       log-enable: true

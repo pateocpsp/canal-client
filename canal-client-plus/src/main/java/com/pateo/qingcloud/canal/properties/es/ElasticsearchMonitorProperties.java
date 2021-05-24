@@ -1,9 +1,8 @@
-package com.pateo.qingcloud.canal.properties;
+package com.pateo.qingcloud.canal.properties.es;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "elasticsearch")
 @Data
 public class ElasticsearchMonitorProperties {
 
@@ -17,7 +16,7 @@ public class ElasticsearchMonitorProperties {
      */
     private int connectTimeOut;
     /**
-     * 客户端从服务器读取数据的超时时间
+     * 连接超时时间
      */
     private int socketTimeOut;
     /**

@@ -69,8 +69,6 @@ public class EsFieldUtils {
      */
     public static boolean checkEvent(String event, EsSync esSync) {
 
-
-
         if (CollectionUtils.isEmpty(esSync.getEvent())) {
             return true;
         }

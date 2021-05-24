@@ -5,11 +5,13 @@ import com.pateo.qingcloud.canal.constant.CommonConstants;
 import com.pateo.qingcloud.canal.context.CanalContext;
 import com.pateo.qingcloud.canal.dao.CommonDao;
 import com.pateo.qingcloud.canal.es.EsService;
+import com.pateo.qingcloud.canal.es.impl.EsServiceImpl;
 import com.pateo.qingcloud.canal.es.vo.EsUpsertReqVo;
 import com.pateo.qingcloud.canal.factory.DataSourceFactory;
+import com.pateo.qingcloud.canal.factory.EsFactory;
 import com.pateo.qingcloud.canal.model.CanalModel;
 import com.pateo.qingcloud.canal.properties.CanalClientPlusInfo;
-import com.pateo.qingcloud.canal.properties.druid.DruidInfo;
+import com.pateo.qingcloud.canal.properties.CanalClientPlusInfoMap;
 import com.pateo.qingcloud.canal.properties.es.EsSync;
 import com.pateo.qingcloud.canal.properties.es.ParentChildren;
 import com.pateo.qingcloud.canal.properties.rdb.SourceInfo;
@@ -29,32 +31,38 @@ import java.util.*;
 @CanalTable(value = "all")
 public class AllEntryHandler implements EntryHandler<Map<String, String>> {
 
-    private Logger logger = LoggerFactory.getLogger(AllEntryHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(AllEntryHandler.class);
 
-
-    //private final static String ADD_SCRIPT = "if (ctx._source.%s == null) {ctx._source.%s = [params.%s]} else {ctx._source.%s.add(params.%s)}";
     /**
      * 执行脚本
      * */
     private final static String ADD_SCRIPT = "if (ctx.op == 'create'){ctx._source=params.data} else {if (ctx._source.%s == null) {ctx._source.%s = [params.%s]} else {ctx._source.%s.add(params.%s)}}";
     private final static String REMOVE_SCRIPT = "ctx._source.%s.remove(ctx._source.%s.indexOf(params.%s))";
 
-    public AllEntryHandler(CanalClientPlusInfo canalClientPlusInfo,
-                           EsService esService,
-                           CommonDao commonDao, DataSourceFactory dataSourceFactory){
-        this.canalClientPlusInfo = canalClientPlusInfo;
+    public AllEntryHandler(CanalClientPlusInfoMap canalClientPlusInfoMap,
+                           CommonDao commonDao,
+                           DataSourceFactory dataSourceFactory,
+                           EsFactory esFactory){
+
         this.dataSourceFactory = dataSourceFactory;
-        this.esService = esService;
         this.commonDao = commonDao;
+        this.esFactory = esFactory;
+        String projectKey = canalClientPlusInfoMap.getCanalClientPlusInfoMap().keySet().iterator().next();
+        this.projectKey = projectKey;
+        this.canalClientPlusInfo = canalClientPlusInfoMap.getCanalClientPlusInfoMap().get(projectKey);
     }
 
     private CanalClientPlusInfo canalClientPlusInfo;
 
+    private CanalClientPlusInfoMap canalClientPlusInfoMap;
+
     private DataSourceFactory dataSourceFactory;
 
-    private EsService esService;
+    private EsFactory esFactory;
 
     private CommonDao commonDao;
+
+    private String projectKey;
 
     @Override
     public void insert(Map<String, String> map) {
@@ -84,7 +92,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
      * @return
      */
     private void updateEs(String event, Map<String, String> map) {
-
+        EsService esService;
         Map<String, Object> esJsonMap = new HashMap<>(500);
         CanalModel canal = CanalContext.getModel();
         String dataBase = canal.getDatabase();
@@ -101,6 +109,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
         }
 
         for (EsSync esSync: esSyncList) {
+            esService = new EsServiceImpl(esFactory.getRestHighLevelClient(projectKey.concat(esSync.getTargetEs())));
 
             // 判断配置哪种同步事件
             if (!EsFieldUtils.checkEvent(event, esSync)) {
@@ -137,7 +146,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
                 for (Map<String, Object> d : esSync.getUpdateArrayFields()) {
                     String key = d.keySet().iterator().next();//es数组字段
                     Object mapValue = d.get(key); // 数据库字段
-                    coverAdd(esId, index, key, esJsonMap.get(mapValue));
+                    coverAdd(esId, index, key, esJsonMap.get(mapValue), esService);
                 }
                 return;
             }
@@ -164,12 +173,12 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
 
             // 判断是否给数据库字段取了别名
             Map<String, Object> esJsonMapReplaceCopy = new HashMap<>();
-            if (!CollectionUtils.isEmpty(esSync.getAliasFields())) {
+            if (!CollectionUtils.isEmpty(esSync.getEsFields())) {
                 for(Map.Entry<String, Object> entry : esJsonMap.entrySet()) {
                     String key = entry.getKey();
                     Object value = entry.getValue();
-                    if (esSync.getAliasFields().get(key) != null) {
-                        String aliasField = esSync.getAliasFields().get(key).toString();
+                    if (esSync.getEsFields().get(key) != null) {
+                        String aliasField = esSync.getEsFields().get(key).toString();
                         esJsonMapReplaceCopy.put(aliasField, value);
                     }
                 }
@@ -208,7 +217,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
      * @param map
      */
     public void esDataDelete(Map<String, String> map) {
-
+        EsService esService;
         CanalModel canal = CanalContext.getModel();
         String dataBase = canal.getDatabase();
         String table = canal.getTable();
@@ -223,7 +232,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
             return;
         }
         for (EsSync esSync: esSyncList) {
-
+            esService = new EsServiceImpl(esFactory.getRestHighLevelClient(projectKey.concat(esSync.getTargetEs())));
             // 判断配置哪种同步事件
             if (!EsFieldUtils.checkEvent(CommonConstants.SYNC_EVENT.DELETE, esSync)) {
                 return;
@@ -256,7 +265,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
                 for (Map<String, Object> d : esSync.getUpdateArrayFields()) {
                     String key = d.keySet().iterator().next();//es数组字段
                     Object mapValue = d.get(key); // 数据库字段
-                    coverRemove(id, index, key, esJsonMap.get(mapValue));
+                    coverRemove(id, index, key, esJsonMap.get(mapValue), esService);
                 }
                 return;
             }
@@ -298,7 +307,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
             for (TableInfo d : sourceProperties.getTargets()) {
                 String datasource = d.getDatasource();
                 // 获取数据库连接
-                DataSource dataSource = dataSourceFactory.getDataSource(datasource);
+                DataSource dataSource = dataSourceFactory.getDataSource(projectKey.concat(datasource));
                 String targetTable = d.getTable();
                 String targetIdField = d.getTargetColumn().keySet().iterator().next();
                 String targetValueField = d.getTargetColumn().get(targetIdField).toString();
@@ -315,7 +324,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
      * @param esField
      * @param dbFieldInfo
      */
-    private void coverRemove(String id, String esIndex, String esField, Object dbFieldInfo) {
+    private void coverRemove(String id, String esIndex, String esField, Object dbFieldInfo, EsService esService) {
         String valueScript = String.format(REMOVE_SCRIPT, esField, esField, esField);
         Map<String, Object> valueMap = new HashMap<>();
         valueMap.put(esField, dbFieldInfo);
@@ -330,7 +339,7 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
      * @param esField
      * @param dbFieldInfo
      */
-    private void coverAdd(String id, String esIndex, String esField, Object dbFieldInfo) {
+    private void coverAdd(String id, String esIndex, String esField, Object dbFieldInfo, EsService esService) {
         String script = String.format(ADD_SCRIPT, esField, esField, esField, esField, esField);
         Map<String, Object> valueMap = new HashMap<>();
 
@@ -355,10 +364,10 @@ public class AllEntryHandler implements EntryHandler<Map<String, String>> {
      */
     private void coverJsonMap(EsSync esSync, Map<String, String> map, Map<String, Object> esJsonMap) {
         // 判断是否配置特殊类型转换，如果配置了则需要特殊字段类型转换
-        esSync.getFields().forEach(d -> {
+        esSync.getDbFields().forEach(d -> {
             // 判断是否配置特殊类型转换，如果配置了则需要特殊字段类型转换
-            if (esSync.getObjFields() != null && esSync.getObjFields().size() > 0 && esSync.getObjFields().get(d) != null) {
-                String fieldType = esSync.getObjFields().get(d).toString();
+            if (esSync.getEsFieldTypes() != null && esSync.getEsFieldTypes().size() > 0 && esSync.getEsFieldTypes().get(d) != null) {
+                String fieldType = esSync.getEsFieldTypes().get(d).toString();
                 esJsonMap.put(d, EsFieldUtils.convertType(fieldType, map.get(d)));
             } else {
                 esJsonMap.put(d, map.get(d));

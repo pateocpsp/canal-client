@@ -11,9 +11,10 @@ import com.pateo.qingcloud.canal.handler.impl.AsyncFlatMessageHandlerImpl;
 import com.pateo.qingcloud.canal.handler.impl.MapRowDataHandlerImpl;
 import com.pateo.qingcloud.canal.handler.impl.SyncFlatMessageHandlerImpl;
 import com.pateo.qingcloud.canal.init.CanalClientPostBean;
-import com.pateo.qingcloud.canal.properties.CanalKafkaProperties;
-import com.pateo.qingcloud.canal.properties.CanalProperties;
-import org.apache.commons.lang3.ArrayUtils;
+import com.pateo.qingcloud.canal.properties.CanalClientPlusInfo;
+import com.pateo.qingcloud.canal.properties.CanalClientPlusInfoMap;
+import com.pateo.qingcloud.canal.properties.CanalClientProperties;
+import com.pateo.qingcloud.canal.properties.kafka.Consumer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -25,18 +26,21 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 @Configuration
-@EnableConfigurationProperties(CanalKafkaProperties.class)
+@EnableConfigurationProperties(CanalClientProperties.class)
 @ConditionalOnBean(value = {EntryHandler.class})
-@ConditionalOnProperty(value = CanalProperties.CANAL_MODE, havingValue = "kafka")
+@ConditionalOnProperty(value = CanalClientProperties.CANAL_MODE, havingValue = "kafka")
 @Import({ThreadPoolAutoConfiguration.class, CanalClientPostBean.class})
 public class KafkaClientAutoConfiguration {
 
 
-    private CanalKafkaProperties canalKafkaProperties;
+    private CanalClientProperties canalClientProperties;
+
+    private Map<String, CanalClientPlusInfo> canalClientPlusInfoMap;
 
 
-    public KafkaClientAutoConfiguration(CanalKafkaProperties canalKafkaProperties) {
-        this.canalKafkaProperties = canalKafkaProperties;
+    public KafkaClientAutoConfiguration(CanalClientPlusInfoMap canalClientPlusInfoMap, CanalClientProperties canalClientProperties) {
+        this.canalClientPlusInfoMap = canalClientPlusInfoMap.getCanalClientPlusInfoMap();
+        this.canalClientProperties = canalClientProperties;
     }
 
 
@@ -46,19 +50,19 @@ public class KafkaClientAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(value = CanalProperties.CANAL_ASYNC,havingValue = "true",matchIfMissing = true)
+    @ConditionalOnProperty(value = CanalClientProperties.CANAL_ASYNC, havingValue = "false")
+    public MessageHandler syncFlatMessageHandler(RowDataHandler<List<Map<String, String>>> rowDataHandler, List<EntryHandler> entryHandlers) {
+        return new SyncFlatMessageHandlerImpl(entryHandlers, rowDataHandler);
+    }
+
+    @Bean
+    @ConditionalOnProperty(value = CanalClientProperties.CANAL_ASYNC, havingValue = "true", matchIfMissing = true)
     public MessageHandler asyncFlatMessageHandler(RowDataHandler<List<Map<String, String>>> rowDataHandler,
                                                   List<EntryHandler> entryHandlers,
                                                   ExecutorService executorService) {
         return new AsyncFlatMessageHandlerImpl(entryHandlers, rowDataHandler, executorService);
     }
 
-
-    @Bean
-    @ConditionalOnProperty(value = CanalProperties.CANAL_ASYNC,havingValue = "false")
-    public MessageHandler syncFlatMessageHandler(RowDataHandler<List<Map<String, String>>> rowDataHandler, List<EntryHandler> entryHandlers) {
-        return new SyncFlatMessageHandlerImpl(entryHandlers, rowDataHandler);
-    }
 
 //    @Bean(initMethod = "start", destroyMethod = "stop")
 //    public KafkaCanalClient kafkaCanalClient(MessageHandler messageHandler) {
@@ -76,27 +80,26 @@ public class KafkaClientAutoConfiguration {
     @Bean
     public List<KafkaCanalClient> kafkaCanalClientList(MessageHandler messageHandler) {
         List<KafkaCanalClient> clientList = Lists.newArrayList();
-        String[] topics = canalKafkaProperties.getDestination().split(",");
-        String[] groups = canalKafkaProperties.getGroupId().split(",");
-        if (ArrayUtils.isNotEmpty(topics) && ArrayUtils.isNotEmpty(groups)
-            && topics.length == groups.length)
-        {
-            int i = 0;
-            for (String topic : topics) {
-                KafkaCanalClient client = KafkaCanalClient.builder().servers(canalKafkaProperties.getServer())
-                        .groupId(groups[i])
-                        .topic(topic)
-                        .messageHandler(messageHandler)
-                        .batchSize(canalKafkaProperties.getBatchSize())
-                        .filter(canalKafkaProperties.getFilter())
-                        .timeout(canalKafkaProperties.getTimeout())
-                        .unit(canalKafkaProperties.getUnit())
-                        .build();
-                clientList.add(client);
-                i ++ ;
+        if (canalClientPlusInfoMap.size() > 0) {
+            for (Map.Entry<String, CanalClientPlusInfo> canalClientPlusInfoEntry : canalClientPlusInfoMap.entrySet()) {
+                CanalClientPlusInfo value = canalClientPlusInfoEntry.getValue();
+                for (Consumer c : value.getConsumers()) {
+                    //Consumer c = consumer.get("consumer");
+                    KafkaCanalClient client = KafkaCanalClient.builder().servers(canalClientProperties.getKafka())
+                            .groupId(c.getGroupId())
+                            .topic(c.getTopic())
+                            .messageHandler(messageHandler)
+                            .batchSize(canalClientProperties.getBatchSize())
+                            .filter(canalClientProperties.getFilter())
+                            .timeout(canalClientProperties.getTimeout())
+                            .unit(canalClientProperties.getUnit())
+                            .build();
+                    clientList.add(client);
+                }
             }
         }
         return clientList;
     }
+
 
 }

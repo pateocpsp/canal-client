@@ -2,14 +2,6 @@ package com.pateo.qingcloud.canal.constant;
 
 public class CommonConstants {
 
-    public final static String ES_INDEX_PREFIX = "customer_info_index";
-
-    public final static String CUSTOMER_FIELD_PREFIX = "customer_field_";
-
-    public final static String  CUSTOMER_JOIN_INFO_CHILD = "customer_info_field_value_detail";
-
-    public final static String  CUSTOMER_JOIN_INFO_PARENT = "customer_info";
-
     public final static String DATA_FORMAT = "YYYY-MM-dd'T'HH:mm:ss.SSSZ";
 
     // 字段自定义类型枚举

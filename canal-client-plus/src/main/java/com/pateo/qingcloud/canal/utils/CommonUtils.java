@@ -2,41 +2,16 @@ package com.pateo.qingcloud.canal.utils;
 
 import com.googlecode.aviator.AviatorEvaluator;
 import com.pateo.qingcloud.canal.constant.CommonConstants;
+import com.pateo.qingcloud.canal.properties.CanalClientPlusInfo;
 import com.pateo.qingcloud.canal.properties.es.EsSync;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 public class CommonUtils {
 
-
-    /**
-     * 返回es索引
-     * @param tenantCode
-     * @return
-     */
-    public static String getEsIndex(String tenantCode) {
-
-        if (StringUtils.isEmpty(tenantCode)) {
-            // tenantCode不能为null
-        }
-
-        return CommonConstants.ES_INDEX_PREFIX.concat(tenantCode);
-    }
-
-    /**
-     * 获取子文档的主键id
-     * @param fieldId
-     * @return
-     */
-    public static String getFieldId(Long fieldId) {
-
-        return CommonConstants.CUSTOMER_FIELD_PREFIX.concat(fieldId + "");
-    }
 
     private static String toHupm(String foo) {
 
@@ -62,6 +37,7 @@ public class CommonUtils {
 
     /**
      * 判断是否配置Aviator表达式
+     *
      * @param esSync
      * @return
      */
@@ -71,7 +47,7 @@ public class CommonUtils {
         }
         Map<String, Object> env = new HashMap<>();
 
-        for(Map.Entry<String, Object> entry : map.entrySet()) {
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
             env.put(key, value);
@@ -87,5 +63,38 @@ public class CommonUtils {
     }
 
 
+    /**
+     * a,b,c转换成[a,b,c]数组
+     *
+     * @param mapStr
+     * @return
+     */
+    public static List<String> stringToList(String mapStr) {
+
+        List<String> list = new ArrayList<>(50);
+
+        if (!StringUtils.isEmpty(mapStr)) {
+            list.addAll(Arrays.asList(mapStr.split(",")));
+        }
+
+        return list;
+    }
+
+
+    public static void stringToListCover(CanalClientPlusInfo canalClientPlusInfo) {
+
+        for (Map.Entry<String, List<EsSync>> entry : canalClientPlusInfo.getEsSync().entrySet()) {
+            List<EsSync> values = entry.getValue();
+            for (EsSync value : values) {
+                if (!CollectionUtils.isEmpty(value.getDbFields())) {
+                    value.setDbFields(stringToList(value.getDbFields().get(0)));
+                }
+
+                if (!CollectionUtils.isEmpty(value.getEvent())) {
+                    value.setEvent(stringToList(value.getEvent().get(0)));
+                }
+            }
+        }
+    }
 
 }

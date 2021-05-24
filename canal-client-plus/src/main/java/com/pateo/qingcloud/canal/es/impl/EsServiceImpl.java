@@ -25,17 +25,22 @@ import org.elasticsearch.script.ScriptType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.util.Map;
 
 @Slf4j
 public class EsServiceImpl implements EsService {
 
-    public EsServiceImpl(RestHighLevelClient restHighLevelClient){
+    private RestHighLevelClient restHighLevelClient;
+
+    public EsServiceImpl() {
+    }
+
+    public EsServiceImpl(RestHighLevelClient restHighLevelClient) {
         this.restHighLevelClient = restHighLevelClient;
     }
 
-    private RestHighLevelClient restHighLevelClient;
 
     @Override
     public void add(EsAddReqVo reqVo) {
@@ -92,14 +97,15 @@ public class EsServiceImpl implements EsService {
             log.info("开始删除es的数据--id={},index={}", id, index);
             //restHighLevelClient.deleteByQueryAsync();
             BulkByScrollResponse response = restHighLevelClient.deleteByQuery(request, RequestOptions.DEFAULT);
-            log.info("SUCCESS--es删除数据成功--id={}--{}", id, response.toString());
+            log.info("SUCCESS===========es删除数据成功----id={}----response：{}", id, response.toString());
         } catch (IOException e) {
-            log.error("！！！es删除数据发生异常！！！");
+            log.error("ERROR！！！es删除数据发生异常！！！");
         }
     }
 
     @Override
     public void upsert(EsUpsertReqVo reqVo) {
+        log.info("\n");
         UpdateRequest updateRequest = new UpdateRequest(reqVo.getIndex(), reqVo.getId());
         log.info("需要修改的es数据为：{}", JSONObject.toJSONString(reqVo, SerializerFeature.WriteMapNullValue));
         updateRequest.doc(JSONObject.toJSONString(reqVo.getData(), SerializerFeature.WriteMapNullValue), XContentType.JSON);
@@ -117,17 +123,17 @@ public class EsServiceImpl implements EsService {
             //处理
             //updateRequest.upsert(JSONObject.toJSONString(reqVo.getData(), SerializerFeature.WriteMapNullValue), XContentType.JSON);
             UpdateResponse updateResponse = restHighLevelClient.update(updateRequest, RequestOptions.DEFAULT);
-            log.info("SUCCESS-----es修改数据成功***{}***{}", updateResponse.toString(), reqVo);
+            log.info("SUCCESS==============es修改数据成功updateResponse：{}=====reqVo：{}", updateResponse.toString(), reqVo);
             //log.info("tryLock thread---{}, lock:{}", Thread.currentThread().getId(), lock);
         } catch (IOException ioException) {
-            log.error("！！！es修改数据发生异常！！！{}----{}", ioException.getMessage(), reqVo);
+            log.error("ERROR！！！es修改数据发生异常！！！{}======={}", ioException.getMessage(), reqVo);
         } catch (Exception e) {
-            log.error("！！！异常！！！{}----{}", e.getMessage(), reqVo);
+            log.error("ERROR！！！发生了未知异常！！！{}======={}", e.getMessage(), reqVo);
         } finally {
             //解锁
             //lock.unlock();
         }
-
+        log.info("\n");
     }
 
     @Override
@@ -167,8 +173,9 @@ public class EsServiceImpl implements EsService {
 
     @Override
     public void updateByScript(String index, String id, String scriptStr, Map<String, Object> paramMap) {
-        UpdateRequest updateRequest = new UpdateRequest(index, id);
 
+        log.info("\n");
+        UpdateRequest updateRequest = new UpdateRequest(index, id);
         log.info("script-需要修改的es数据为：{}----{}", JSONObject.toJSONString(paramMap, SerializerFeature.WriteMapNullValue), scriptStr);
         Script script = new Script(ScriptType.INLINE, "painless", scriptStr, paramMap);
         updateRequest.script(script);
@@ -181,16 +188,16 @@ public class EsServiceImpl implements EsService {
         try {
             //处理
             UpdateResponse updateResponse = restHighLevelClient.update(updateRequest, RequestOptions.DEFAULT);
-            log.info("SUCCESS-----script-es修改数据成功***{}***{}", updateResponse.toString(), JSONObject.toJSONString(paramMap));
+            log.info("SUCCESS=======script=======es修改数据成功===updateResponse：{}===paramMap：}", updateResponse.toString(), JSONObject.toJSONString(paramMap));
             //log.info("tryLock thread---{}, lock:{}", Thread.currentThread().getId(), lock);
         } catch (IOException ioException) {
-            log.error("！！！script-es修改数据发生异常！！！{}，脚本为={}，数据为={}", ioException.getMessage(), scriptStr, JSONObject.toJSONString(paramMap));
+            log.error("ERROR！！！script-es修改数据发生异常！！！{}，脚本为：{}====数据为：{}", ioException.getMessage(), scriptStr, JSONObject.toJSONString(paramMap));
         } catch (Exception e) {
-            log.error("！！！异常！！！{}，脚本为={}，数据为={}", e.getMessage(), scriptStr, JSONObject.toJSONString(paramMap));
+            log.error("ERROR！！！异常！！！{}，脚本为={}，数据为={}", e.getMessage(), scriptStr, JSONObject.toJSONString(paramMap));
         } finally {
             //解锁
             //lock.unlock();
         }
-
+        log.info("\n");
     }
 }
