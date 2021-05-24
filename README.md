@@ -14,10 +14,10 @@ java8+
 *支持集群部署，高可用，高性能，高并发
 
 ### 一、如何使用
-1.下载所有的源码
-2.准备好zk,nacos,kafka，这里会用到nacos配置中心
-3.启动入口在canal-client-server项目里面
-4.在canal-client-server项目里面配置一下application.yml配置文件
+* 下载所有的源码
+* 准备好zk,nacos,kafka，这里会用到nacos配置中心
+* 启动入口在canal-client-server项目里面
+* 在canal-client-server项目里面配置一下application.yml配置文件
 
 ###二、开始使用
 ####1.配置nacos中心配置新建一个主配置名字要跟项目里面配置的一样
@@ -208,8 +208,8 @@ relations:
         name: customer_info 
         parent: customer_id
 customer_join_info    mapping中定义的父子表关联关系
-name                         mapping中定义的父或子文档的名称,这里写字符串类型
-parent                        如果是子文档这里需要定义父文档的主键id,值是fields中的字段
+name                  mapping中定义的父或子文档的名称,这里写字符串类型
+parent                如果是子文档这里需要定义父文档的主键id,值是fields中的字段
 
 ------------------------------------
 updateArrayFields：
