@@ -16,7 +16,7 @@ public class ElasticsearchMonitorProperties {
      */
     private int connectTimeOut;
     /**
-     * 连接超时时间
+     * 客户端从服务器读取数据的timeout
      */
     private int socketTimeOut;
     /**
